@@ -1,0 +1,228 @@
+IDENTIFICATION DIVISION.
+       PROGRAM-ID.
+           MULTPULL.
+      *
+       ENVIRONMENT DIVISION.
+       INPUT-OUTPUT SECTION.
+       FILE-CONTROL.
+           SELECT INFILE ASSIGN TO INFILE.
+           SELECT FSTABLE ASSIGN TO FSTABLE.
+           SELECT OUTFILE ASSIGN TO OUTFILE.
+       DATA DIVISION.
+       FILE SECTION.
+       FD  INFILE.
+       01  INPUT-RECORD                                 PIC X(80).
+
+       FD  FSTABLE.
+       01  SEARCH-TABLE.
+           05  STRING-LENGTH                             PIC X(3).
+           05  STRING-POS                                PIC XX.
+           05  STRING-VALUE                              PIC X(20).
+           05  FILLER                                    PIC X(55).
+
+       FD OUTFILE.
+       01  LINE-OUT-RECORD                               PIC X(80).
+      *
+       WORKING-STORAGE SECTION.
+       01  OUT-OF-CARDS-FLAG-F                            PIC XXX.
+       01  OUT-OF-CARDS-FLAG-S                            PIC XXX.
+       01  MATCH-FOUND                                    PIC XXX.
+       01  BLANK-LINE                      PIC X(80) VALUE SPACES.
+       01  WRITE-REC                                      PIC X(80).
+       01  REC-WRITTEN-CTR                  PIC 999 VALUE 0.
+       01  REC-READ-CTR                     PIC 999 VALUE 0.
+       01  SEARCH-SIGN-READ-CTR             PIC 999 VALUE 0.
+       01  COND-CTR                                       PIC 999.
+       01  ARRAY-CTR                                      PIC 999.
+       01  PROCESS-CTR                                    PIC 999.
+       01  MATCH-CTR                                      PIC 999.
+       01  LOOP-CTR                                       PIC 999.
+       01  COMPARE-STRING                                 PIC X(20).
+
+       01  TEST-IF           PIC X(30) VALUE 'TESTING IF STATEMENT'.
+       01  CURRENT-DATE-FIELDS                            PIC X(21).
+
+       01  CURRENT-DATE-INFO REDEFINES CURRENT-DATE-FIELDS.
+           05  CURRENT-DATE-DIGITS.
+               10  CURRENT-YEAR                         PIC X(4).
+               10  CURRENT-MONTH                        PIC X(2).
+               10  CURRENT-DAY                          PIC X(2).
+           05  CURRENT-TIME-DIGITS.
+               10  CURRENT-HOUR                         PIC X(2).
+               10  CURRENT-MINUTE                       PIC X(2).
+               10  CURRENT-SECOND                       PIC X(2).
+           05  DIFF-FROM-GMT                            PIC X(4).
+
+       01  REPORT-HEADER.
+           05  FILLER                                   PIC X(05)
+                                                        VALUE 'DATE '.
+           05  DATE-FIELD                               PIC 99/99/99.
+           05  FILLER                                   PIC X(25)
+                                                        VALUE ALL ' '.
+           05  FILLER                                   PIC X(15)
+                                               VALUE 'MULTPULL REPORT'.
+       01  RECORDS-READ-REPORT.
+           05  FILLER                                   PIC X(24)
+                                      VALUE 'NUMBER OF RECORDS READ: '.
+           05  REC-READ-REPORT                          PIC 999.
+
+       01  RECORD-WRITTEN-REPORT.
+           05  FILLER                                   PIC X(26)
+                                    VALUE 'NUMBER OF RECORD WRITTEN: '.
+           05  REC-WRITTEN-REPORT                       PIC 999.
+
+       01  RECORD-SIGNATURE-REPORT.
+           05  FILLER                                   PIC X(26)
+                                    VALUE 'NUMBER OF SIGNATURE READ: '.
+           05  REC-SIGNATURE-REPORT                     PIC 999.
+
+       01  EMPTY-FILE-REPORT.
+           05  FILLER                                   PIC X(38)
+                       VALUE 'INPUT OR TABLE SIGNATURE FILE IS EMPTY'.
+           05  FILLER                                   PIC X(42)
+                                                         VALUE ALL '-'.
+       01  NO-FILE-MATCHES-REPORT.
+           05  FILLER                                   PIC X(36)
+                          VALUE 'INPUT HAD NO TABLE SIGNATURE MATCHES'.
+           05  FILLER                                   PIC X(42)
+                                                         VALUE ALL '-'.
+       01  GOOD-RUN.
+           05  FILLER                       PIC X(08) VALUE 'GOOD RUN'.
+           05  FILLER                       PIC X(72) VALUE ALL '-'.
+      ****************************************************************
+      * THIS IS THE SIGNTURE TABLE
+      ****************************************************************
+       01  WS-SEARCH-TABLE.
+           05  WS-STRING-LENGTH   OCCURS 100 TIMES          PIC 9(3).
+           05  WS-STRING-POS      OCCURS 100 TIMES          PIC 99.
+           05  WS-STRING-VALUE    OCCURS 100 TIMES          PIC X(20).
+
+       01  COMPARE-LENGTH                                   PIC 9(3).
+       01  COMPARE-POS                                      PIC 99.
+       01  COMPARE-VALUE                                    PIC X(20).
+
+
+      ***************************************************************
+       01  REPORT-DATE.
+           05  CURRENT-MONTH                                PIC X(2).
+           05  CURRENT-DAY                                  PIC X(2).
+           05  CURRENT-YEAR                                 PIC X(4).
+
+      ***************************************************************
+
+       PROCEDURE DIVISION.
+       MAIN-LINE-ROUTINE.
+           OPEN INPUT INFILE.
+           OPEN INPUT FSTABLE.
+           OPEN OUTPUT OUTFILE.
+
+           PERFORM PROCESS-DATE.
+           MOVE 'NO' TO OUT-OF-CARDS-FLAG-S.
+           MOVE 'NO' TO OUT-OF-CARDS-FLAG-F.
+
+           WRITE LINE-OUT-RECORD FROM REPORT-HEADER.
+           WRITE LINE-OUT-RECORD FROM BLANK-LINE.
+           WRITE LINE-OUT-RECORD FROM BLANK-LINE.
+
+           READ FSTABLE RECORD
+               AT END MOVE 'YES' TO OUT-OF-CARDS-FLAG-S.
+
+           PERFORM PROCESS-LOAD-TABLE
+                UNTIL OUT-OF-CARDS-FLAG-S = 'YES'.
+
+           READ INFILE RECORD
+               AT END MOVE 'YES' TO OUT-OF-CARDS-FLAG-F.
+
+           PERFORM PROCESS-MULTPULL-REPORT
+                UNTIL OUT-OF-CARDS-FLAG-F = 'YES'.
+
+           PERFORM END-OF-FILE-PROCESS.
+
+
+
+           CLOSE INFILE.
+           CLOSE FSTABLE
+           CLOSE OUTFILE.
+           STOP RUN.
+      ******************************************************************
+      * THIS PERFORM STATEMENT RECIEVES THE CURRENT DATE
+      * ****************************************************************
+       PROCESS-DATE.
+           MOVE FUNCTION CURRENT-DATE TO CURRENT-DATE-FIELDS.
+           MOVE CORRESPONDING CURRENT-DATE-DIGITS TO REPORT-DATE.
+           MOVE REPORT-DATE (1:8) TO DATE-FIELD OF REPORT-HEADER.
+
+      ******************************************************************
+      * THIS PERFORM STATEMENT READ IN SEARCH SIGNIGTURE AS A INPUT FILE
+      * AND LOADS THE FILE INTO A TABLE(ARRAY)
+      ******************************************************************
+       PROCESS-LOAD-TABLE.
+           ADD 1 TO ARRAY-CTR.
+
+           MOVE STRING-LENGTH TO WS-STRING-LENGTH (ARRAY-CTR).
+           MOVE STRING-POS TO WS-STRING-POS (ARRAY-CTR).
+           MOVE STRING-VALUE TO WS-STRING-VALUE (ARRAY-CTR).
+           ADD 1 TO SEARCH-SIGN-READ-CTR.
+
+           READ FSTABLE RECORD
+               AT END MOVE 'YES' TO OUT-OF-CARDS-FLAG-S.
+
+      ******************************************************************
+      * THIS PERFORM STATEMENT COMPARES THE SIGNATURE WITH ACTUAL STRING
+      * IN EACH RECORD AND EACH SIGNATURE THAN WRITE THE MATCH RECORDS
+      ******************************************************************
+       PROCESS-MULTPULL-REPORT.
+           INITIALIZE COMPARE-LENGTH, COMPARE-POS, COMPARE-VALUE,
+                      LOOP-CTR, PROCESS-CTR, MATCH-FOUND.
+           ADD 1 TO REC-READ-CTR.
+
+           PERFORM UNTIL LOOP-CTR = ARRAY-CTR OR MATCH-FOUND = 'YES'
+                ADD 1 TO PROCESS-CTR
+                MOVE WS-STRING-LENGTH (PROCESS-CTR) TO COMPARE-LENGTH
+                MOVE WS-STRING-POS (PROCESS-CTR) TO COMPARE-POS
+                MOVE WS-STRING-VALUE (PROCESS-CTR) TO COMPARE-VALUE
+                MOVE INPUT-RECORD TO  WRITE-REC
+                MOVE INPUT-RECORD (COMPARE-LENGTH:COMPARE-POS) TO
+                      COMPARE-STRING
+                ADD 1 TO LOOP-CTR
+
+           IF COMPARE-STRING = COMPARE-VALUE
+                 WRITE LINE-OUT-RECORD FROM INPUT-RECORD
+                 ADD 1 TO REC-WRITTEN-CTR
+                 MOVE 'YES' TO MATCH-FOUND
+           END-IF
+           END-PERFORM.
+
+           READ INFILE RECORD
+               AT END MOVE 'YES' TO OUT-OF-CARDS-FLAG-F.
+      *****************************************************************
+      * PROCESS WRITES END RESULTS OF INPUT AND KEY SIGNATURE READS
+      * CHECKS TO SEE TO FILES ARE EMPTY OR NO MATCHES
+      * AND PROVIDES A RETURN-CODE
+      *****************************************************************
+       END-OF-FILE-PROCESS.
+           INITIALIZE REC-READ-REPORT.
+           INITIALIZE REC-WRITTEN-REPORT.
+
+           ADD REC-READ-CTR TO REC-READ-REPORT.
+           ADD REC-WRITTEN-CTR TO REC-WRITTEN-REPORT.
+           ADD SEARCH-SIGN-READ-CTR TO REC-SIGNATURE-REPORT.
+           WRITE LINE-OUT-RECORD FROM BLANK-LINE.
+           WRITE LINE-OUT-RECORD FROM BLANK-LINE.
+
+           WRITE LINE-OUT-RECORD FROM RECORDS-READ-REPORT.
+           WRITE LINE-OUT-RECORD FROM RECORD-SIGNATURE-REPORT.
+           WRITE LINE-OUT-RECORD FROM RECORD-WRITTEN-REPORT.
+
+           IF REC-READ-REPORT = 0 OR SEARCH-SIGN-READ-CTR = 0
+                  WRITE LINE-OUT-RECORD FROM BLANK-LINE
+                  WRITE LINE-OUT-RECORD FROM EMPTY-FILE-REPORT
+                  ADD 8 TO RETURN-CODE
+
+           ELSE IF REC-WRITTEN-CTR = 0
+                  WRITE LINE-OUT-RECORD FROM BLANK-LINE
+                  WRITE LINE-OUT-RECORD FROM NO-FILE-MATCHES-REPORT
+                  ADD 4 TO RETURN-CODE
+           ELSE
+                 WRITE LINE-OUT-RECORD FROM BLANK-LINE
+                 WRITE LINE-OUT-RECORD FROM GOOD-RUN.

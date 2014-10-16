@@ -1,0 +1,302 @@
+ IDENTIFICATION DIVISION.
+       PROGRAM-ID.
+           DTSALES.
+      *
+       ENVIRONMENT DIVISION.
+       INPUT-OUTPUT SECTION.
+       FILE-CONTROL.
+           SELECT INPUTF ASSIGN TO INPUTF.
+
+           SELECT REPORTA ASSIGN TO REPORTA.
+           SELECT REPORTB ASSIGN TO REPORTB.
+
+       DATA DIVISION.
+       FILE SECTION.
+       FD  INPUTF.
+       01  INPUT-FILE.
+           05  FIRST-NAME                       PIC X(15).
+           05  LAST-NAME                        PIC X(20).
+           05  DISTRICT                         PIC 9(3).
+           05  SOCIAL-SERCURITY                 PIC 9(9).
+           05  QUARTER-SALES    OCCURS 4 TIMES  PIC 999999V99.
+           05  FILLER                           PIC 9.
+
+
+       FD REPORTA.
+       01  LINE-OUT-REPORTA            PIC X(132).
+
+        FD REPORTB.
+        01  LINE-OUT-REPORTB            PIC X(80).
+      ***************************************************************
+       WORKING-STORAGE SECTION.
+       01  OUT-OF-CARDS-FLAG   PIC XXX.
+       01  BLANK-LINE-A        PIC X(132) VALUE SPACES.
+       01  BLANK-LINE-B        PIC X(80) VALUE SPACES.
+       01  DASH-LINE           PIC X(80) VALUE ALL '-'.
+      *********************************************************
+       01  CURRENT-DATE-FIELDS PIC X(21).
+       01  CURRENT-DATE-INFO REDEFINES CURRENT-DATE-FIELDS.
+           05  CURRENT-DATE-DIGITS.
+               10  CURRENT-YEAR             PIC X(4).
+               10  CURRENT-MONTH            PIC X(2).
+               10  CURRENT-DAY              PIC X(2).
+           05  CURRENT-TIME-DIGITS.
+               10  CURRENT-HOUR             PIC X(2).
+               10  CURRENT-MINUTE           PIC X(2).
+               10  CURRENT-SECOND           PIC X(2).
+           05  DIFF-FROM-GMT                PIC X(4).
+      *
+       01  REPORT-DATE.
+           05  CURRENT-MONTH                PIC X(2).
+           05  CURRENT-DAY                  PIC X(2).
+           05  CURRENT-YEAR                 PIC X(4).
+
+       01  PAGE-HEADER.
+           05  DATE-FIELD                   PIC X(8).
+           05  FILLER                       PIC X(2).
+           05  TITLE-FIELD                  PIC X(23)
+                                     VALUE 'ANNUAL SALES FOR AGENTS'.
+       01  RULER-LINE.
+           05  FILLER                       PIC X(10) VALUE ALL '='.
+           05  FILLER                       PIC X(2) VALUE SPACES.
+           05  FILLER                       PIC X(23) VALUE ALL '='.
+
+       01  DISTRICT-HEADER.
+           05  FILLER                       PIC X(1) VALUE SPACES.
+           05  DISTRICT-TITLE               PIC X(9) VALUE 'DISTRICT '.
+           05  FILLER                       PIC X VALUE ' '.
+           05  DISTRICT-NUM                 PIC 9(3) VALUE 000.
+
+       01  DETAIL-LINE.
+           05  FILLER                   PIC X(3) VALUE SPACES.
+           05  SS-NUMBER                PIC X(9).
+           05  FILLER                   PIC X(3) VALUE SPACES.
+           05  LAST-NAME                PIC X(20).
+           05  FILLER                   PIC X VALUE ','.
+           05  FIRST-NAME               PIC X(15).
+           05  FILLER                   PIC X(1) VALUE SPACES.
+           05  QUARTER-ONE              PIC $ZZZ,ZZZ.99.
+           05  FILLER                   PIC XX VALUE SPACES.
+           05  QUARTER-TWO              PIC $ZZZ,ZZZ.99.
+           05  FILLER                   PIC XX VALUE SPACES.
+           05  QUARTER-THREE            PIC $ZZZ,ZZZ.99.
+           05  FILLER                   PIC XX.
+           05  QUARTER-FOUR             PIC $ZZZ,ZZZ.99.
+           05  FILLER                   PIC XX VALUE SPACES.
+           05  AVG-SALES-QUARTER        PIC $ZZZ,ZZZ.99.
+           05  FILLER                   PIC XX VALUE SPACES.
+           05  GRAND-TOTAL              PIC $ZZZ,ZZZ.99.
+
+       01  TITLE-LINE-B.
+           05  FILLER                   PIC X(10) VALUE ALL "-".
+           05  TITLE-LINE-REPORTB       PIC X(10) VALUE 'REPORT B'.
+           05  FILLER                   PIC X(60) VALUE ALL "-".
+
+       01  TITLE-LINE.
+           05  FILLER                   PIC X(3) VALUE SPACES.
+           05  SS-NUMBER-TITLE          PIC X(10)
+                                        VALUE 'SS-NUMBER'.
+           05  FILLER                   PIC X(3) VALUE SPACES.
+           05  LAST-NAME-TITLE          PIC X(9)
+                                        VALUE 'LAST NAME'.
+           05  FILLER                   PIC X VALUE SPACE.
+           05  FIRST-NAME               PIC X(10)
+                                        VALUE 'FIRST NAME'.
+           05  FILLER                   PIC X(6) VALUE SPACES.
+           05  QUARTER-ONE              PIC X(12)
+                                        VALUE 'QUARTER-ONE'.
+           05  FILLER                   PIC XX VALUE SPACES.
+           05  QUARTER-TWO              PIC X(12)
+                                        VALUE 'QUARTER-TWO'.
+           05  FILLER                   PIC XX VALUE SPACES.
+           05  QUARTER-THREE            PIC X(13)
+                                        VALUE 'QUARTER-THREE'.
+           05  QUARTER-FOUR             PIC X(12)
+                                        VALUE 'QUARTER-FOUR'.
+           05  FILLER                   PIC XX VALUE SPACES.
+           05  AVG-SALES-QUARTER-T      PIC X(12)
+                                        VALUE 'AVG. QUARTER'.
+           05  FILLER                   PIC XX VALUE SPACES.
+           05  GRAND-TOTAL-TITLE        PIC X(12)
+                                        VALUE 'GRAND-TOTAL'.
+       01  DETAIL-LINE-B.
+           05  FILLER                   PIC X(9) VALUE 'DISTRICT'.
+           05  NUM-DISTRICT             PIC 9(3) VALUE 000.
+           05  FILLER                   PIC X(5) VALUE SPACES.
+           05  SALES-TOTAL              PIC $ZZZ,ZZZ.99.
+
+       01  GRAND-TOTAL-LINE.
+           05  GRAND-TOTAL-B            PIC $ZZZ,ZZZ.99.
+
+       01  RULER-DETAIL-LINE.
+           05  FILLER                   PIC X(54).
+           05  FILLER                   PIC X(30) VALUE ALL '='.
+
+       01  DISTRICT-TOTAL-LINE.
+           05  DISTRICT-TOTAL          PIC $ZZZ,ZZZ.99.
+
+       01  REPORT-ENDING-LINE.
+           05  FILLER              PIC X(30) VALUE ALL '-'.
+           05  FILLER              PIC X(12) VALUE 'REPORT RECAP'.
+           05  FILLER              PIC X(30) VALUE ALL '-'.
+
+       01  REPORT-TOTALS.
+           05  FILLER              PIC X(09) VALUE SPACES.
+           05  FILLER              PIC X(12) VALUE 'GRAND TOTAL '.
+           05  FILE-GRAND-TOTAL    PIC $ZZZ,ZZZ.99.
+           05  FILLER              PIC XX VALUE SPACES.
+           05  FILLER              PIC X(16) VALUE 'TOTAL DISTRICTS '.
+           05  TOTAL-DISTICTS      PIC 999.
+           05  FILLER              PIC XX VALUE SPACES.
+           05  FILLER              PIC X(16) VALUE 'TOTAL EMPLOYEES '.
+           05  TOTAL-EMPLOYEES     PIC 999.
+
+       01  GRAND-TOTAL-LINES.
+           05  TITLE-GRAND         PIC X(12) VALUE 'GRAND TOTAL '.
+           05  GRAND-TOT           PIC $ZZZ,ZZZ,999.99.
+
+       01  WS-SUBS                 PIC X(15).
+       01  WS-EMP-TOTALS           PIC 9(7)V99.
+       01  WS-GRAND-TOTALS         PIC 9(7)V99.
+       01  WS-EMP-AVG              PIC 9(6)V99.
+       77  NUM-LINE                PIC 99 VALUE 0.
+       01  TOTAL-DISTRICTS         PIC 999 VALUE 0.
+       01  RECORD-COUNTER          PIC 999 VALUE 0.
+       01  WS-QUARTER-ONE          PIC 999999V99.
+       01  WS-QUARTER-TWO          PIC 999999V99.
+       01  WS-QUARTER-THREE        PIC 999999V99.
+       01  WS-QUARTER-FOUR         PIC 999999V99.
+       01  LOOP-COUNTER            PIC 9.
+       01  DISTRICT-COUNTER        PIC 999 VALUE 0.
+       01  EMP-COUNTER             PIC 999 VALUE 0.
+       01  DISTRICT-TOTALB         PIC 999999V99.
+      ***************************************************************
+       PROCEDURE DIVISION.
+       MAIN-LINE-ROUTINE.
+           OPEN INPUT INPUTF.
+           OPEN OUTPUT REPORTA.
+           OPEN OUTPUT REPORTB.
+           PERFORM PROCESS-DATE.
+
+           WRITE LINE-OUT-REPORTA FROM PAGE-HEADER.
+           WRITE LINE-OUT-REPORTB FROM TITLE-LINE-B.
+           WRITE LINE-OUT-REPORTA FROM RULER-LINE.
+           WRITE LINE-OUT-REPORTB FROM RULER-LINE.
+           MOVE 'NO' TO OUT-OF-CARDS-FLAG.
+           INITIALIZE DISTRICT-NUM.
+
+            READ INPUTF RECORD
+                AT END MOVE 'YES' TO OUT-OF-CARDS-FLAG.
+
+           PERFORM PROCESS-REPORT-A
+                    UNTIL OUT-OF-CARDS-FLAG = 'YES'.
+           PERFORM PROCESS-REPORT-ENDING.
+           MOVE WS-GRAND-TOTALS TO GRAND-TOT OF GRAND-TOTAL-LINES.
+           WRITE LINE-OUT-REPORTB FROM BLANK-LINE-B.
+           WRITE LINE-OUT-REPORTB FROM GRAND-TOTAL-LINES.
+           CLOSE INPUTF.
+           CLOSE REPORTA.
+           CLOSE REPORTB.
+           STOP RUN.
+      ****************************************************************
+      * RETRIEVES THE CURRENT DATE FROM SYSTEM MOVES IT TO PAGE-HEADER
+      ****************************************************************
+       PROCESS-DATE.
+           MOVE FUNCTION CURRENT-DATE TO CURRENT-DATE-FIELDS.
+           MOVE CORRESPONDING CURRENT-DATE-DIGITS TO REPORT-DATE.
+           MOVE REPORT-DATE (1:8)  TO DATE-FIELD OF PAGE-HEADER.
+
+      ****************************************************************
+      * PRINT PAGE HEADER EVERY 60 PAGES
+      * PRINT DISTRICT-HEADER
+      * PROCESSES DETAIL LINES FROM THE QUARTERS SALES
+      * PRINT THE DETAIL LINES
+      * PROCESS REPORT B
+      ****************************************************************
+       PROCESS-REPORT-A.
+            PERFORM PRINT-PAGE-HEADER.
+            PERFORM PRINT-DISTRICT-HEADER.
+            PERFORM PROCESS-DETAIL-LINES.
+            PERFORM PRINT-DETAIL-LINES.
+            PERFORM PROCESS-REPORT-B.
+
+            READ INPUTF RECORD
+               AT END MOVE 'YES' TO OUT-OF-CARDS-FLAG.
+       PRINT-PAGE-HEADER.
+           IF NUM-LINE = 60
+              WRITE LINE-OUT-REPORTA FROM PAGE-HEADER
+              WRITE LINE-OUT-REPORTB FROM PAGE-HEADER
+              WRITE LINE-OUT-REPORTA FROM BLANK-LINE-A
+              WRITE LINE-OUT-REPORTB FROM BLANK-LINE-B
+              WRITE LINE-OUT-REPORTA FROM RULER-LINE
+              WRITE LINE-OUT-REPORTA FROM TITLE-LINE
+              ADD 4 TO NUM-LINE.
+
+       PRINT-DISTRICT-HEADER.
+           IF DISTRICT NOT EQUAL DISTRICT-NUM
+              ADD 1 TO DISTRICT-COUNTER.
+           MOVE DISTRICT TO DISTRICT-NUM.
+           WRITE LINE-OUT-REPORTA FROM DISTRICT-HEADER.
+           WRITE LINE-OUT-REPORTA FROM RULER-LINE.
+           ADD 3 TO NUM-LINE.
+
+       PROCESS-DETAIL-LINES.
+      *    MOVE CORRESPONDING INPUT-FILE TO DETAIL-LINE.
+           MOVE LAST-NAME OF INPUTF TO LAST-NAME OF DETAIL-LINE.
+           MOVE FIRST-NAME OF INPUTF TO FIRST-NAME OF DETAIL-LINE.
+      *************************************************************
+      *    MOVE SPACE TO DETAIL-LINE (14:36).
+      *    STRING LAST-NAME OF DETAIL-LINE DELIMITED BY " "
+      *      ", " DELIMITED BY SIZE FIRST-NAME OF DETAIL-LINE
+      *          FIRST-NAME OF DETAIL-LINE DELIMITED BY " "
+      *          INTO DETAIL-LINE (14:).
+           MOVE SOCIAL-SERCURITY TO SS-NUMBER
+           MOVE QUARTER-SALES(1) TO WS-QUARTER-ONE.
+           MOVE QUARTER-SALES(1) TO QUARTER-ONE OF DETAIL-LINE.
+           MOVE QUARTER-SALES(2) TO WS-QUARTER-TWO.
+           MOVE QUARTER-SALES(2) TO QUARTER-TWO OF DETAIL-LINE.
+           MOVE QUARTER-SALES(3) TO WS-QUARTER-THREE.
+           MOVE QUARTER-SALES(3) TO QUARTER-THREE OF DETAIL-LINE.
+           MOVE QUARTER-SALES(4) TO WS-QUARTER-FOUR.
+           MOVE QUARTER-SALES(4) TO QUARTER-FOUR OF DETAIL-LINE.
+
+           ADD 1 TO EMP-COUNTER.
+           PERFORM PROCESS-QUARTER-SALES.
+
+       PROCESS-QUARTER-SALES.
+           INITIALIZE LOOP-COUNTER.
+           ADD 1 TO LOOP-COUNTER.
+
+           PERFORM UNTIL LOOP-COUNTER = 4
+               ADD QUARTER-SALES(LOOP-COUNTER) TO WS-EMP-TOTALS
+               ADD 1 TO LOOP-COUNTER
+           END-PERFORM.
+
+           DIVIDE WS-EMP-TOTALS BY 4 GIVING WS-EMP-AVG.
+           MOVE WS-EMP-AVG TO AVG-SALES-QUARTER.
+           MOVE WS-EMP-TOTALS TO GRAND-TOTAL.
+           ADD WS-EMP-TOTALS TO WS-GRAND-TOTALS.
+
+       PRINT-DETAIL-LINES.
+           MOVE WS-GRAND-TOTALS TO FILE-GRAND-TOTAL.
+           WRITE LINE-OUT-REPORTA FROM DETAIL-LINE.
+           WRITE LINE-OUT-REPORTA FROM DISTRICT-TOTAL-LINE.
+           ADD 2 TO NUM-LINE.
+       PROCESS-REPORT-B.
+           IF DISTRICT OF INPUTF NOT EQUAL NUM-DISTRICT OF
+              DETAIL-LINE-B
+              ADD WS-EMP-TOTALS TO DISTRICT-TOTALB
+              MOVE DISTRICT-TOTALB TO SALES-TOTAL OF DETAIL-LINE-B
+              MOVE DISTRICT OF INPUTF TO NUM-DISTRICT OF DETAIL-LINE-B
+              WRITE LINE-OUT-REPORTB FROM DETAIL-LINE-B
+              INITIALIZE DISTRICT-TOTALB
+              ADD WS-EMP-TOTALS TO DISTRICT-TOTALB
+           ELSE
+              ADD WS-EMP-TOTALS TO DISTRICT-TOTALB.
+        PROCESS-REPORT-ENDING.
+           MOVE EMP-COUNTER TO TOTAL-EMPLOYEES.
+           MOVE DISTRICT-COUNTER TO TOTAL-DISTRICTS.
+           WRITE LINE-OUT-REPORTA FROM BLANK-LINE-A.
+           WRITE LINE-OUT-REPORTA FROM BLANK-LINE-A.
+           WRITE LINE-OUT-REPORTA FROM REPORT-ENDING-LINE.
+           WRITE LINE-OUT-REPORTA FROM REPORT-TOTALS.
